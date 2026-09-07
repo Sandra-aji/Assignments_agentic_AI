@@ -3,30 +3,28 @@ from models.record import MonitoringRecord
 
 class DatabaseCollector:
     """
-    Collect information from the SENTINEL-NEXUS
-    SQLite database.
+    Read a separate source database containing previously recorded
+    software-project monitoring information.
     """
 
-    def __init__(self, database):
-        self.database = database
+    def __init__(self, source_database):
+        self.source_database = source_database
 
     def collect(self):
-        """
-        Retrieve stored records from the database.
-        """
-
-        rows = self.database.get_all_records()
+        rows = self.source_database.get_source_records()
 
         records = []
 
         for row in rows:
-            record = MonitoringRecord(
-                title=row[1],
-                content=row[2],
-                source_type="Database",
-                source=row[4]
+            records.append(
+                MonitoringRecord(
+                    record_key=row["record_key"],
+                    title=row["title"],
+                    content=row["content"],
+                    source_type="Database",
+                    source=row["source"],
+                    data=row["data"]
+                )
             )
-
-            records.append(record)
 
         return records

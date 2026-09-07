@@ -1,37 +1,42 @@
 class Analysis:
     """
-    Analysis component of SENTINEL-NEXUS.
-
-    Detects potentially important changes or events
-    in processed monitoring data.
+    Detect actual state changes by comparing current records
+    with the latest state stored by SENTINEL-NEXUS.
     """
 
+    def __init__(self, database):
+        self.database = database
+
     def analyze(self, processed_data):
-        """
-        Analyze processed records for important information.
-        """
+        changed_records = []
+        new_records = []
+        unchanged_records = []
 
-        records = processed_data["records"]
+        for record in processed_data["records"]:
+            previous = self.database.get_current_record(
+                record["record_key"]
+            )
 
-        important_records = []
+            if previous is None:
+                new_records.append(record)
+                continue
 
-        keywords = [
-            "important",
-            "warning",
-            "alert",
-            "failure",
-            "error",
-            "critical"
-        ]
+            if previous["data"] != record["data"]:
+                changed_records.append({
+                    "current": record,
+                    "previous": previous["data"]
+                })
+            else:
+                unchanged_records.append(record)
 
-        for record in records:
-            content = record["content"].lower()
-
-            if any(keyword in content for keyword in keywords):
-                important_records.append(record)
+        important_change = bool(
+            changed_records or new_records
+        )
 
         return {
-            "important_change": len(important_records) > 0,
-            "important_records": important_records,
-            "total_records": len(records)
+            "important_change": important_change,
+            "changed_records": changed_records,
+            "new_records": new_records,
+            "unchanged_records": unchanged_records,
+            "total_records": processed_data["record_count"]
         }

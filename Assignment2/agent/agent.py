@@ -10,15 +10,12 @@ from utils.validators import (
     validate_monitoring_request,
     validate_records
 )
-
 from utils.logger import get_logger
 
 
 class SentinelNexusAgent:
     """
     Main SENTINEL-NEXUS Agent.
-
-    Controls the complete Agent Loop:
 
     Perception → Collection → Processing
     → Analysis → Reasoning → Decision → Action
@@ -40,7 +37,7 @@ class SentinelNexusAgent:
         )
 
         self.processing = Processing()
-        self.analysis = Analysis()
+        self.analysis = Analysis(database)
         self.reasoning = Reasoning()
         self.decision = Decision()
         self.action = Action(database)
@@ -48,106 +45,52 @@ class SentinelNexusAgent:
         self.logger = get_logger()
 
     def run(self, monitoring_request):
-        """
-        Run the complete SENTINEL-NEXUS agent loop.
-        """
-
         self.logger.info(
             "Agent started: %s",
             monitoring_request
         )
 
         try:
-            # Validate request
             validate_monitoring_request(
                 monitoring_request
             )
 
-            self.logger.info(
-                "Monitoring request validated"
-            )
-
-            # Step 1: Perception
             perception_result = self.perception.perceive(
                 monitoring_request
             )
 
             source_type = perception_result["source_type"]
 
-            self.logger.info(
-                "Perception completed: %s",
-                source_type
-            )
+            records = self.collection.collect(source_type)
 
-            # Step 2: Collection
-            records = self.collection.collect(
-                source_type
-            )
-
-            self.logger.info(
-                "Collection completed: %d records",
-                len(records)
-            )
-
-            # Validate collected data
             validate_records(records)
 
-            self.logger.info(
-                "Collected data validated"
-            )
+            processed_data = self.processing.process(records)
 
-            # Step 3: Processing
-            processed_data = self.processing.process(
-                records
-            )
-
-            self.logger.info(
-                "Processing completed"
-            )
-
-            # Step 4: Analysis
             analysis_result = self.analysis.analyze(
                 processed_data
             )
 
-            self.logger.info(
-                "Analysis completed: important_change=%s",
-                analysis_result["important_change"]
-            )
-
-            # Step 5: Reasoning
             reasoning_result = self.reasoning.reason(
                 analysis_result
             )
 
-            self.logger.info(
-                "Reasoning completed"
-            )
-
-            # Step 6: Decision
             decision_result = self.decision.decide(
                 reasoning_result
             )
 
-            self.logger.info(
-                "Decision completed: priority=%s, action=%s",
-                decision_result["priority"],
-                decision_result["action"]
-            )
-
-            # Step 7: Action
             action_result = self.action.execute(
                 records,
                 decision_result
             )
 
             self.logger.info(
-                "Action completed: %s",
-                action_result["message"]
-            )
-
-            self.logger.info(
-                "Agent completed successfully"
+                "Agent completed: source=%s records=%d "
+                "priority=%s action=%s",
+                source_type,
+                len(records),
+                decision_result["priority"],
+                decision_result["action"]
             )
 
             return {
@@ -161,15 +104,15 @@ class SentinelNexusAgent:
                 "priority": decision_result["priority"],
                 "action": action_result["action"],
                 "stored_count": action_result["stored_count"],
+                "changed_count": action_result["changed_count"],
+                "reasons": reasoning_result["reasons"],
                 "message": action_result["message"],
                 "status": "COMPLETED"
             }
 
         except Exception as error:
-
             self.logger.error(
                 "Agent execution failed: %s",
                 error
             )
-
             raise

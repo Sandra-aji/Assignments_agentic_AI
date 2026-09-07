@@ -1,47 +1,45 @@
 class Action:
-    """
-    Action component of SENTINEL-NEXUS.
-
-    Performs the action decided by the agent,
-    such as storing records or generating an alert.
-    """
+    """Store new/current state and report or alert when required."""
 
     def __init__(self, database):
         self.database = database
 
     def execute(self, records, decision_result):
-        """
-        Execute the decided monitoring action.
-        """
+        stored_count = 0
+        changed_count = 0
+
+        for record in records:
+            result = self.database.upsert_record(record)
+
+            if result["is_new"] or result["changed"]:
+                stored_count += 1
+
+            if result["changed"]:
+                changed_count += 1
 
         action = decision_result["action"]
 
-        stored_count = 0
-
-        if action in ["STORE", "ALERT"]:
-
-            for record in records:
-
-                # Avoid duplicating records that
-                # were already collected from the database.
-                if record.source_type != "Database":
-                    self.database.insert_record(record)
-                    stored_count += 1
-
         if action == "ALERT":
             message = (
-                f"ALERT: {len(records)} records contain "
-                "important information."
+                f"HIGH-priority alert: {changed_count} "
+                "significant change(s) detected."
+            )
+
+        elif action == "STORE_AND_REPORT":
+            message = (
+                f"Monitoring update: {stored_count} new or "
+                "changed record(s) stored."
             )
 
         else:
             message = (
-                f"Monitoring completed. "
-                f"{stored_count} records stored."
+                "No significant change detected. "
+                "Current state retained without duplicate history."
             )
 
         return {
             "action": action,
             "stored_count": stored_count,
+            "changed_count": changed_count,
             "message": message
         }

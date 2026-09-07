@@ -1,3 +1,4 @@
+import re
 from bs4 import BeautifulSoup
 
 from models.record import MonitoringRecord
@@ -6,33 +7,23 @@ from config import load_config
 
 
 class WebCollector:
-    """
-    Collect information from an English website
-    using requests and Beautiful Soup.
-    """
+    """Collect software-project issue information from a public web page."""
 
     def __init__(self, timeout=None, retries=None):
         config = load_config()
-
         self.timeout = (
-            timeout
-            if timeout is not None
+            timeout if timeout is not None
             else config["request_timeout"]
         )
-
         self.retries = (
-            retries
-            if retries is not None
+            retries if retries is not None
             else config["max_retries"]
         )
+        self.repo = config["github_repo"]
+        self.base_url = config["github_web_url"]
 
     def collect(self):
-        """
-        Collect book information from
-        Books to Scrape.
-        """
-
-        url = "https://books.toscrape.com/"
+        url = f"{self.base_url}/{self.repo}/issues"
 
         response = request_with_retry(
             url=url,
@@ -43,77 +34,51 @@ class WebCollector:
             }
         )
 
-        soup = BeautifulSoup(
-            response.text,
-            "html.parser"
-        )
-
+        soup = BeautifulSoup(response.text, "html.parser")
         records = []
 
-        books = soup.select("article.product_pod")
+        issue_links = soup.select(
+            f'a[href^="/{self.repo}/issues/"]'
+        )
 
-        for book in books:
+        seen = set()
 
-            title_element = book.select_one("h3 a")
-            price_element = book.select_one(
-                ".price_color"
-            )
-            availability_element = book.select_one(
-                ".availability"
-            )
-            rating_element = book.select_one(
-                "p.star-rating"
-            )
+        for link in issue_links:
+            href = link.get("href", "")
+            match = re.search(r"/issues/(\d+)$", href)
 
-            title = (
-                title_element.get("title", "Unknown")
-                if title_element
-                else "Unknown"
-            )
+            if not match:
+                continue
 
-            price = (
-                price_element.get_text(strip=True)
-                if price_element
-                else "Unknown"
-            )
+            issue_number = match.group(1)
 
-            price = price.replace("Â£", "£")
+            if issue_number in seen:
+                continue
 
-            availability = (
-                availability_element.get_text(
-                    " ",
-                    strip=True
+            title = link.get_text(" ", strip=True)
+
+            if not title:
+                continue
+
+            seen.add(issue_number)
+
+            records.append(
+                MonitoringRecord(
+                    record_key=f"issue:{self.repo}#{issue_number}",
+                    title=f"Issue #{issue_number}: {title}",
+                    content=f"Open issue detected: {title}",
+                    source_type="Website",
+                    source=url,
+                    data={
+                        "repository": self.repo,
+                        "issue_number": int(issue_number),
+                        "title": title,
+                        "state": "open"
+                    }
                 )
-                if availability_element
-                else "Unknown"
             )
 
-            rating = "Unknown"
-
-            if rating_element:
-                rating_classes = rating_element.get(
-                    "class",
-                    []
-                )
-
-                if len(rating_classes) > 1:
-                    rating = rating_classes[1]
-
-            content = (
-                f"Book: {title}; "
-                f"Price: {price}; "
-                f"Availability: {availability}; "
-                f"Rating: {rating}"
-            )
-
-            record = MonitoringRecord(
-                title=title,
-                content=content,
-                source_type="Website",
-                source=url
-            )
-
-            records.append(record)
+            if len(records) >= 10:
+                break
 
         return records
-    

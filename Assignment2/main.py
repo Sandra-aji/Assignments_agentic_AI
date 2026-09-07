@@ -1,6 +1,7 @@
 from agent.agent import SentinelNexusAgent
 
 from database.database import SentinelDatabase
+from database.source_database import SourceMonitoringDatabase
 
 from collectors.api_collector import APICollector
 from collectors.web_collector import WebCollector
@@ -8,39 +9,37 @@ from collectors.database_collector import DatabaseCollector
 
 
 def main():
-    """
-    Start the SENTINEL-NEXUS monitoring agent.
-    """
-
-    print("=" * 60)
+    print("=" * 65)
     print("        SENTINEL-NEXUS INTELLIGENCE AGENT")
-    print("=" * 60)
+    print("        Software Project Monitoring System")
+    print("=" * 65)
 
     monitoring_request = input(
         "\nEnter monitoring request: "
     ).strip()
 
-    database = SentinelDatabase()
+    sentinel_database = SentinelDatabase()
+    source_database = SourceMonitoringDatabase()
 
     api_collector = APICollector()
     web_collector = WebCollector()
-    database_collector = DatabaseCollector(database)
+    database_collector = DatabaseCollector(
+        source_database
+    )
 
     agent = SentinelNexusAgent(
         api_collector,
         web_collector,
         database_collector,
-        database
+        sentinel_database
     )
 
     try:
-        result = agent.run(
-            monitoring_request
-        )
+        result = agent.run(monitoring_request)
 
-        print("\n" + "=" * 60)
-        print("           MONITORING RESULT")
-        print("=" * 60)
+        print("\n" + "=" * 65)
+        print("                 MONITORING RESULT")
+        print("=" * 65)
 
         print(f"Agent: {result['agent']}")
         print(f"Source Type: {result['source_type']}")
@@ -55,16 +54,23 @@ def main():
         print(f"Priority: {result['priority']}")
         print(f"Action: {result['action']}")
         print(
-            f"Records Stored: "
+            f"Records Stored/Updated: "
             f"{result['stored_count']}"
         )
-        print(f"Message: {result['message']}")
-        print(f"Agent Status: {result['status']}")
+        print(
+            f"Changes Detected: "
+            f"{result['changed_count']}"
+        )
 
-        print("=" * 60)
+        print("\nReasoning:")
+        for reason in result["reasons"]:
+            print(f"- {reason}")
+
+        print(f"\nMessage: {result['message']}")
+        print(f"Agent Status: {result['status']}")
+        print("=" * 65)
 
     except Exception as error:
-
         print("\nAgent execution failed.")
         print(f"Error: {error}")
 

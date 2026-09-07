@@ -1,10 +1,5 @@
 class Collection:
-    """
-    Collection component of SENTINEL-NEXUS.
-
-    Selects the appropriate collector based on
-    the source identified during perception.
-    """
+    """Select and run the collector for the detected source."""
 
     def __init__(
         self,
@@ -17,10 +12,6 @@ class Collection:
         self.database_collector = database_collector
 
     def collect(self, source_type):
-        """
-        Collect information from the selected source.
-        """
-
         if source_type == "API":
             return self.api_collector.collect()
 

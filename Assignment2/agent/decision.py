@@ -1,23 +1,18 @@
 class Decision:
-    """
-    Decision component of SENTINEL-NEXUS.
-
-    Determines the priority and action based on
-    the reasoning result.
-    """
+    """Determine priority and action from the reasoning result."""
 
     def decide(self, reasoning_result):
-        """
-        Make a decision based on detected changes.
-        """
-
-        if reasoning_result["important_change"]:
+        if reasoning_result["high_priority"]:
             priority = "HIGH"
             action = "ALERT"
 
+        elif reasoning_result["important_change"]:
+            priority = "MEDIUM"
+            action = "STORE_AND_REPORT"
+
         else:
-            priority = "LOW"
-            action = "STORE"
+            priority = "NORMAL"
+            action = "NO_CHANGE"
 
         return {
             "priority": priority,

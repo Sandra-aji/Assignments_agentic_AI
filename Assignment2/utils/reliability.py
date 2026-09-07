@@ -8,9 +8,7 @@ def request_with_retry(
     retries=3,
     headers=None
 ):
-    """
-    Make an HTTP GET request with retry handling.
-    """
+    """Make an HTTP GET request with timeout and retry handling."""
 
     last_error = None
 
@@ -21,9 +19,7 @@ def request_with_retry(
                 timeout=timeout,
                 headers=headers
             )
-
             response.raise_for_status()
-
             return response
 
         except requests.RequestException as error:
